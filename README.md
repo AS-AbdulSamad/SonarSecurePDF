@@ -13,10 +13,10 @@ Automatically generate professional PDF security reports from SonarQube security
 📦 Requirements
 
 ## Minimum Requirements
-Python: Version 3.6 or higher
-SonarQube: Server version 7.9+ (local or remote)
-Memory: 512MB RAM minimum
-Disk Space: 100MB for reports
+* Python: Version 3.6 or higher
+* SonarQube: Server version 7.9+ (local or remote)
+* Memory: 512MB RAM minimum
+* Disk Space: 100MB for reports
 
 ## Installation
 * Step 1: Install Python
