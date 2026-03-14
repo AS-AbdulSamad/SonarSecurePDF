@@ -2,15 +2,15 @@
 Automatically generate professional PDF security reports from SonarQube security hotspots.
 
 ## Features
-🔐 Auto-login	No manual token copying – just enter username/password
-📊 Professional PDF Reports	Title page, summaries, charts, and detailed findings
-🎨 Color-coded Severities	HIGH (red), MEDIUM (orange), LOW (green)
-🔍 Code Snippets	Vulnerable lines highlighted in red
-🖼️ Company Logo	Automatically adds your logo to reports
-📈 Summary Statistics	Tables and charts for quick overview
-🛡️ Zero Vulnerabilities	Clean report when no issues found
-📱 Interactive Prompts	Simple step-by-step guided process
-📦 Requirements
+* 🔐 Auto-login	No manual token copying – just enter username/password
+* 📊 Professional PDF Reports	Title page, summaries, charts, and detailed findings
+* 🎨 Color-coded Severities	HIGH (red), MEDIUM (orange), LOW (green)
+* 🔍 Code Snippets	Vulnerable lines highlighted in red
+* 🖼️ Company Logo	Automatically adds your logo to reports
+* 📈 Summary Statistics	Tables and charts for quick overview
+* 🛡️ Zero Vulnerabilities	Clean report when no issues found
+* 📱 Interactive Prompts	Simple step-by-step guided process
+* 📦 Requirements
 
 ## Minimum Requirements
 * Python: Version 3.6 or higher
@@ -71,11 +71,16 @@ SonarQube → My Account → Security → Generate Token
 ```
 ## FAQ
 * Does this work with SonarQube Community Edition?
+```
 Yes, but Security Hotspots API may be limited.
+```
 * Can this scan multiple projects?
+```
 Yes. Run the script multiple times with different Project Keys.
+```
 * Can I customize the report?
+```
 Yes.
-
+```
 
 ### Built for Security Engineers & Pentesters
