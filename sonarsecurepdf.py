@@ -712,6 +712,7 @@ class SonarQubePDF(FPDF):
         self.ln(2)
 
         # -- KEY RECOMMENDATIONS ---------------------------------------
+        self.add_page()
         self.sub_section_title('Key Recommendations')
         self.set_font('Helvetica', '', 10)
         recs = []
@@ -719,8 +720,11 @@ class SonarQubePDF(FPDF):
             recs.append(f"Prioritise immediate remediation of {high} High severity finding(s).")
         if to_review > 0:
             recs.append(f"Complete the review of {to_review} outstanding finding(s) currently pending assessment.")
-        if medium > 0:
-            recs.append(f"Address {medium} Medium severity finding(s) within the next development cycle.")
+        recs.append("Ensure that all identified findings and vulnerabilities highlighted in this report are remediated in a timely manner, followed by proper validation and re-testing to confirm effective mitigation.")
+        recs.append("Implement secure coding practices across all applications to prevent common vulnerabilities such as injection, authentication flaws, and insecure data handling.")
+        recs.append("Avoid the use of unsafe or deprecated functions (e.g., dynamic code execution mechanisms) and replace them with secure, controlled alternatives.")
+        recs.append("Ensure all user inputs are properly validated and sanitized on both client-side and server-side before processing.")
+        recs.append("Ensure all sensitive data is transmitted over secure communication channels (HTTPS/TLS) and avoid clear-text transmission.")
         recs.append("Provide targeted security training for developers based on the identified vulnerability categories.")
         recs.append("Incorporate periodic security code reviews as a mandatory step within the Software Development Life Cycle (SDLC).")
 
