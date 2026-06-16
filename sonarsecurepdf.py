@@ -124,7 +124,6 @@ def make_severity_pie(severity_counts):
 
     total = sum(sizes)
 
-    # 3.4 x 3.4 inch => at 150dpi = 510x510px; at 87mm in PDF => near square
     fig, ax = plt.subplots(figsize=(3.4, 3.4), dpi=150, facecolor='white')
     fig.subplots_adjust(left=0.05, right=0.95, top=0.88, bottom=0.20)
 
@@ -200,7 +199,6 @@ def make_findings_bar(severity_counts, status_counts, resolution_counts_raw):
         colors = ['#1565C0', '#C62828', '#E67800', '#2E7D32', '#B71C1C', '#1565C0']
         separators = [3.5]
 
-    # 3.4 wide x 3.0 tall => fits 87mm column, near same height as pie
     fig, ax = plt.subplots(figsize=(3.4, 3.0), dpi=150, facecolor='white')
     fig.subplots_adjust(left=0.04, right=0.98, top=0.84, bottom=0.24)
 
@@ -365,10 +363,6 @@ class SonarQubePDF(FPDF):
 
     def status_pill(self, label_text, value_text, pill_r, pill_g, pill_b,
                     key_w=42, row_h=7):
-        """
-        Render a metadata row where the value is a plain-text coloured word
-        (no filled background box) - professional, clean look.
-        """
         self.set_x(self.l_margin)
         self.set_font('Helvetica', 'B', 9)
         self.set_fill_color(*C_LIGHT_BG)
@@ -456,7 +450,6 @@ class SonarQubePDF(FPDF):
     # Executive Summary
     # ------------------------------------------------------------------
     def executive_summary(self, hotspots_data, sev_png, bar_png):
-        # -- PAGE 1: Title + Intro + Metric Cards ----------------------
         self.add_page()
         self.section_title('EXECUTIVE SUMMARY', size=18)
 
@@ -471,7 +464,6 @@ class SonarQubePDF(FPDF):
         self.safe_multi_cell(0, 5.5, self.safe_text(intro))
         self.ln(8)
 
-        # Compute all stats once
         total = len(hotspots_data)
         severity_counts   = Counter()
         status_counts     = Counter()
@@ -492,25 +484,19 @@ class SonarQubePDF(FPDF):
         false_pos = resolution_counts.get('SAFE',  0)
         valid     = resolution_counts.get('ACKNOWLEDGED', 0)
 
-        # Layout constants
-        # Two columns, each 87mm wide, 6mm gap
         COL_W  = 87
         GAP    = 6
-        x_left  = self.l_margin       # 15
-        x_right = x_left + COL_W + GAP  # 108
+        x_left  = self.l_margin
+        x_right = x_left + COL_W + GAP
 
-        # -- TABLE helper ---------------------------------------------
         def draw_table(x, title, headers, rows, col_widths):
-            """Draw a titled table at absolute x, returning bottom y."""
             y = self.get_y()
-            # Table title
             self.set_xy(x, y)
             self.set_font('Helvetica', 'B', 10)
             self.set_text_color(*C_PRIMARY)
             self.cell(COL_W, 7, title, align='L',
                       new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.set_xy(x, self.get_y())
-            # Header row
             self.set_font('Helvetica', 'B', 8)
             self.set_fill_color(*C_PRIMARY)
             self.set_text_color(*C_WHITE)
@@ -521,7 +507,6 @@ class SonarQubePDF(FPDF):
                           new_x=XPos.RIGHT, new_y=YPos.TOP)
                 cx += w
             self.set_xy(x, self.get_y() + 7)
-            # Data rows
             for idx, (cells, color) in enumerate(rows):
                 bg = C_LIGHT_BG if idx % 2 == 0 else C_WHITE
                 self.set_fill_color(*bg)
@@ -541,9 +526,7 @@ class SonarQubePDF(FPDF):
                 self.set_xy(x, row_y2 + 6.5)
             return self.get_y()
 
-        # -- CHART embed helper ----------------------------------------
         def embed_chart_at(png_bytes, x, y, w, caption):
-            """Place a chart image at absolute (x,y), return bottom y."""
             if not png_bytes:
                 return y
             tmp = _save_png_tmp(png_bytes)
@@ -551,16 +534,12 @@ class SonarQubePDF(FPDF):
                 return y
             try:
                 self.image(tmp, x=x, y=y, w=w)
-                # Estimate height from aspect ratio stored in png
-                # Pie is 4x4 => ratio 1.0; Bar is 7x4 => ratio 1.75
-                # We'll read actual size via a quick PIL check if available
                 try:
-                    import struct, zlib
-                    # Read PNG IHDR for width/height
+                    import struct
                     with open(tmp, 'rb') as f2:
-                        f2.read(8)   # PNG signature
-                        f2.read(4)   # chunk length
-                        f2.read(4)   # 'IHDR'
+                        f2.read(8)
+                        f2.read(4)
+                        f2.read(4)
                         pw = struct.unpack('>I', f2.read(4))[0]
                         ph = struct.unpack('>I', f2.read(4))[0]
                     aspect = ph / pw
@@ -577,7 +556,6 @@ class SonarQubePDF(FPDF):
             finally:
                 os.unlink(tmp)
 
-        # -- LEFT COLUMN: Severity Distribution -----------------------
         sev_table_rows = [
             (['High',   str(high)],   C_RED),
             (['Medium', str(medium)], C_ORANGE),
@@ -600,7 +578,6 @@ class SonarQubePDF(FPDF):
             'Figure 1 - Severity Distribution'
         )
 
-        # -- RIGHT COLUMN: Findings Overview --------------------------
         findings_rows = [
             (['Total Findings',  str(total)],     C_ACCENT),
             (['To Review',       str(to_review)], C_RED),
@@ -610,7 +587,6 @@ class SonarQubePDF(FPDF):
             (['Valid',           str(valid)],     C_ORANGE),
         ]
 
-        # Position right column at same top as left
         self.set_y(section_top)
         bottom_findings_table = draw_table(
             x_right, 'Findings Overview',
@@ -626,11 +602,9 @@ class SonarQubePDF(FPDF):
             'Figure 2 - Findings Overview'
         )
 
-        # Advance below both columns (whichever is lower)
         self.set_y(max(bottom_sev_chart, bottom_findings_chart) + 6)
         self.set_text_color(*C_DARK)
 
-        # -- METHODOLOGY -----------------------------------------------
         self.sub_section_title('Assessment Methodology')
         self.set_font('Helvetica', '', 10)
         self.set_text_color(*C_DARK)
@@ -688,7 +662,6 @@ class SonarQubePDF(FPDF):
 
         for i, (title, body) in enumerate(methodologies):
             item_y = self.get_y()
-            # Number bubble
             self.set_fill_color(*C_PRIMARY)
             self.rect(self.l_margin, item_y, 6, 6, 'F')
             self.set_xy(self.l_margin, item_y)
@@ -696,12 +669,10 @@ class SonarQubePDF(FPDF):
             self.set_text_color(*C_WHITE)
             self.cell(6, 6, str(i + 1), align='C',
                       new_x=XPos.RIGHT, new_y=YPos.TOP)
-            # Title
             self.set_font('Helvetica', 'B', 9)
             self.set_text_color(*C_PRIMARY)
             self.cell(0, 6, self.safe_text(title),
                       new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
-            # Body
             self.set_x(self.l_margin + 6)
             self.set_font('Helvetica', '', 9)
             self.set_text_color(*C_DARK)
@@ -711,7 +682,6 @@ class SonarQubePDF(FPDF):
 
         self.ln(2)
 
-        # -- KEY RECOMMENDATIONS ---------------------------------------
         self.add_page()
         self.sub_section_title('Key Recommendations')
         self.set_font('Helvetica', '', 10)
@@ -761,20 +731,16 @@ class SonarQubePDF(FPDF):
 
         for title, col, body in defs:
             bar_y = self.get_y()
-            # Left colour bar
             self.set_fill_color(*col)
             self.rect(self.l_margin, bar_y, 3, 24, 'F')
-            # Card bg - very light tint
             bg = (min(col[0]+215,255), min(col[1]+215,255), min(col[2]+215,255))
             self.set_fill_color(*bg)
             self.rect(self.l_margin + 3, bar_y, 177, 24, 'F')
-            # Title
             self.set_xy(self.l_margin + 7, bar_y + 3)
             self.set_font('Helvetica', 'B', 11)
             self.set_text_color(*col)
             self.cell(0, 6, title,
                       new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='L')
-            # Body
             self.set_x(self.l_margin + 7)
             self.set_font('Helvetica', '', 9)
             self.set_text_color(*C_DARK)
@@ -829,7 +795,6 @@ class SonarQubePDF(FPDF):
             self.cell(w2, 7, str(col2), border=0, fill=True,
                       new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
 
-        # Review Status
         self.sub_section_title('Review Status')
         tbl_header('Status', 'Count')
         r_pct = f"{reviewed / total * 100:.1f}%" if total else "0%"
@@ -838,7 +803,6 @@ class SonarQubePDF(FPDF):
         tbl_row(f'To Review ({u_pct})', unreview, col1_color=C_RED,   even=False)
         self.ln(8)
 
-        # Resolution Breakdown
         if resolution_counts:
             self.sub_section_title('Resolution Breakdown')
             tbl_header('Resolution', 'Count')
@@ -853,7 +817,6 @@ class SonarQubePDF(FPDF):
                     tbl_row(lbl, cnt, col1_color=col, even=(idx % 2 == 0))
             self.ln(8)
 
-        # Severity
         self.sub_section_title('Severity')
         tbl_header('Severity', 'Count')
         sev_cfg = [
@@ -866,7 +829,6 @@ class SonarQubePDF(FPDF):
                     col1_color=col, even=(idx % 2 == 0))
         self.ln(8)
 
-        # Top Categories
         self.sub_section_title('Top Security Categories')
         tbl_header('Security Category', 'Count')
         for idx, (cat, cnt) in enumerate(category_counts.most_common(10)):
@@ -895,7 +857,6 @@ class SonarQubePDF(FPDF):
     # ------------------------------------------------------------------
     def hotspot_section(self, hotspot_data, finding_num, total_findings):
         try:
-            # "Finding # N of M" counter line (top-right)
             self.set_font('Helvetica', '', 8)
             self.set_text_color(*C_MID)
             self.set_x(self.l_margin)
@@ -903,12 +864,10 @@ class SonarQubePDF(FPDF):
                       new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='R')
             self.ln(1)
 
-            # Finding title bar: "Finding #N  <name>"
             vp      = hotspot_data.get('vulnerability_probability', 'UNKNOWN')
             vp_disp = severity_display(vp)
             vp_col  = C_RED if vp == 'HIGH' else (C_ORANGE if vp == 'MEDIUM' else C_GREEN)
 
-            # Left accent bar colour = severity colour
             title_y = self.get_y()
             self.set_fill_color(*vp_col)
             self.rect(self.l_margin, title_y, 3, 10, 'F')
@@ -927,7 +886,6 @@ class SonarQubePDF(FPDF):
 
             self.ln(4)
 
-            # --- Recommendation / Solution block (was "Message") ---
             if hotspot_data.get('message'):
                 self.set_x(self.l_margin)
                 self.set_font('Helvetica', 'B', 9)
@@ -942,20 +900,15 @@ class SonarQubePDF(FPDF):
                                 new_x=XPos.LMARGIN, new_y=YPos.NEXT)
                 self.ln(3)
 
-            # --- Metadata table ---
             self.kv_row('Category:', hotspot_data.get('security_category', '')[:60])
-
-            # Severity - coloured text, no background pill
             self.status_pill('Severity:', vp_disp, *vp_col)
 
-            # Review Status
             status  = hotspot_data.get('status', 'UNKNOWN')
             st_map  = {'REVIEWED': 'Reviewed', 'TO_REVIEW': 'Pending Review'}
             st_disp = st_map.get(status, status.replace('_', ' ').title())
             st_col  = C_GREEN if status == 'REVIEWED' else (C_RED if status == 'TO_REVIEW' else C_GREY)
             self.status_pill('Review Status:', st_disp, *st_col)
 
-            # Resolution Status (only when reviewed and set)
             resolution = hotspot_data.get('resolution', 'NONE')
             if status == 'REVIEWED' and resolution != 'NONE':
                 disp    = resolution_display(resolution)
@@ -969,19 +922,15 @@ class SonarQubePDF(FPDF):
                     res_col = C_GREY
                 self.status_pill('Resolution Status:', disp, *res_col)
 
-            # Reviewed by
             if status == 'REVIEWED':
                 self.kv_row('Reviewed by:', COMPANY_NAME)
 
-            # Assignee
             if hotspot_data.get('assignee') and hotspot_data['assignee'] != 'Unassigned':
                 self.kv_row('Assigned to:', hotspot_data['assignee'])
 
-            # File & Line
             self.kv_row('File:', hotspot_data.get('file', '')[:80])
             self.kv_row('Line:', hotspot_data.get('line', ''))
 
-            # Comments
             if hotspot_data.get('comments'):
                 self.ln(2)
                 self.set_font('Helvetica', 'B', 8)
@@ -1007,7 +956,6 @@ class SonarQubePDF(FPDF):
 
             self.ln(4)
 
-            # --- Code Snippet ---
             self.set_font('Helvetica', 'B', 9)
             self.set_text_color(*C_PRIMARY)
             self.set_x(self.l_margin)
@@ -1060,6 +1008,7 @@ def clean_code(html_code):
 
 
 def login_to_sonarqube(base_url, username, password):
+    """Attempt login. Returns session on success, None on failure."""
     session = requests.Session()
     try:
         resp = session.post(
@@ -1068,11 +1017,43 @@ def login_to_sonarqube(base_url, username, password):
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
         )
         if resp.status_code == 200:
-            print("Login successful!")
-            return session
-        print(f"Login failed: {resp.status_code}")
+            # Extra check: verify the session actually works
+            verify = session.get(f"{base_url}/api/authentication/validate")
+            if verify.status_code == 200 and verify.json().get('valid', False):
+                print("Login successful!")
+                return session
+            else:
+                print("Login rejected: invalid credentials.")
+                return None
+        else:
+            print(f"Login failed (HTTP {resp.status_code}): incorrect username or password.")
     except Exception as e:
         print(f"Login error: {e}")
+    return None
+
+
+def login_with_retry(base_url, max_attempts=3):
+    """
+    Prompt for credentials, retry up to max_attempts times on failure.
+    Returns an authenticated session or None if all attempts are exhausted.
+    """
+    attempt = 0
+    while attempt < max_attempts:
+        attempt += 1
+        remaining = max_attempts - attempt
+        print(f"\n--- LOGIN CREDENTIALS (Attempt {attempt}/{max_attempts}) ---")
+        username = input("Username: ").strip()
+        password = getpass.getpass("Password: ")
+
+        session = login_to_sonarqube(base_url, username, password)
+        if session:
+            return session
+
+        if remaining > 0:
+            print(f"  Incorrect credentials. You have {remaining} attempt(s) remaining.")
+        else:
+            print("  Maximum login attempts reached.")
+
     return None
 
 
@@ -1125,24 +1106,17 @@ def get_hotspot_details(session, base_url, hotspot_key):
 
 
 # =========================
-# Main
+# Report Generation (extracted so it can be called in a loop)
 # =========================
 
-def main():
-    global COMPANY_NAME, CLIENT_NAME, PROJECT_NAME, ASSET_TYPE, PROJECT_KEY, REPORT_DATE
-
-    REPORT_DATE = datetime.now().strftime('%B %d, %Y')
-
-    print("\n" + "="*60)
-    print("SONARQUBE SECURITY HOTSPOTS REPORT GENERATOR v4.0 by AS")
-    print("="*60)
-
-    print("\n--- YOUR COMPANY ---")
-    COMPANY_NAME = (input("Your Company Name: ").strip() or "COMMTEL").upper()
-
+def collect_client_info():
+    """
+    Prompt the user for client/project details and return them as a dict.
+    Does NOT modify globals — caller is responsible for that.
+    """
     print("\n--- CLIENT INFORMATION ---")
-    CLIENT_NAME  = input("Client Name: ").strip() or "CLIENT"
-    PROJECT_NAME = input("Project Name: ").strip() or "PROJECT"
+    client_name  = input("Client Name: ").strip() or "CLIENT"
+    project_name = input("Project Name: ").strip() or "PROJECT"
 
     print("\nAsset Type:")
     print("  1. Web Application  2. Mobile Application  3. API")
@@ -1153,61 +1127,140 @@ def main():
         "3": "API", "4": "Desktop Application",
         "5": "Cloud Service", "6": "Other",
     }
-    ASSET_TYPE = asset_map.get(asset_choice, "Web Application")
+    asset_type = asset_map.get(asset_choice, "Web Application")
     if asset_choice == "6":
         custom = input("Enter custom asset type: ").strip()
         if custom:
-            ASSET_TYPE = custom
+            asset_type = custom
 
-    sonar_url = (input("\nSonarQube URL [http://localhost:9000]: ").strip()
-                 or "http://localhost:9000").rstrip('/')
+    return {
+        'client_name':  client_name,
+        'project_name': project_name,
+        'asset_type':   asset_type,
+    }
 
-    print("\n--- LOGIN CREDENTIALS ---")
-    username = input("Username: ").strip()
-    password = getpass.getpass("Password: ")
 
-    session = login_to_sonarqube(sonar_url, username, password)
-    if not session:
-        print("Exiting due to login failure.")
-        return
+def generate_report(session, sonar_url, reuse_client_info=None):
+    """
+    Collect client/project info, fetch hotspots, and produce a PDF.
+    Returns (output_filename, client_info_dict) on success,
+            (None, client_info_dict) on failure.
 
-    print("\n--- PROJECT INFORMATION ---")
-    if input("List available projects? (y/n) [n]: ").strip().lower() == 'y':
-        projects = get_available_projects(session, sonar_url)
-        if projects:
-            print(f"\nFound {len(projects)} projects:")
-            for i, p in enumerate(projects[:20], 1):
-                print(f"  {i}. {p.get('name')} (Key: {p.get('key')})")
-            if len(projects) > 20:
-                print(f"  ... and {len(projects)-20} more")
+    If reuse_client_info is provided (a dict from a previous run), the user
+    is asked whether to keep, change, or partially update those details
+    before proceeding to project selection.
+    """
+    global CLIENT_NAME, PROJECT_NAME, ASSET_TYPE, PROJECT_KEY, REPORT_DATE
 
-    project_key_input = input("\nProject Key/ID: ").strip().strip('"\'')
-    if not project_key_input:
-        print("Project key is required. Exiting.")
-        return
+    REPORT_DATE = datetime.now().strftime('%B %d, %Y')
 
-    actual_project_key = validate_project_key(session, sonar_url, project_key_input)
-    if not actual_project_key:
-        print(f"Project key '{project_key_input}' not found.")
-        projects = get_available_projects(session, sonar_url)
-        similar  = [p for p in projects
-                    if project_key_input.lower() in p.get('key', '').lower()
-                    or project_key_input.lower() in p.get('name', '').lower()]
-        if similar:
-            print("\nSimilar projects:")
-            for i, p in enumerate(similar, 1):
-                print(f"  {i}. {p.get('name')}  (Key: {p.get('key')})")
-            choice = input("\nUse one? Enter number or Enter to exit: ").strip()
-            if choice.isdigit() and 1 <= int(choice) <= len(similar):
-                actual_project_key = similar[int(choice)-1].get('key')
-            else:
-                return
+    # ---- Client info: reuse / edit / replace ----------------------
+    if reuse_client_info:
+        print("\n--- CLIENT INFORMATION ---")
+        print(f"  Current details:")
+        print(f"    Client Name  : {reuse_client_info['client_name']}")
+        print(f"    Project Name : {reuse_client_info['project_name']}")
+        print(f"    Asset Type   : {reuse_client_info['asset_type']}")
+        print()
+        print("  What would you like to do?")
+        print("    1. Keep same client details  (go straight to project selection)")
+        print("    2. Change specific fields    (edit only what you need)")
+        print("    3. Enter all details fresh   (start from scratch)")
+        choice = input("  Enter choice (1/2/3) [1]: ").strip() or "1"
+
+        if choice == "1":
+            # Reuse everything as-is
+            client_info = dict(reuse_client_info)
+
+        elif choice == "2":
+            # Partial edit — show each field and allow override
+            client_info = dict(reuse_client_info)
+            print("\n  Press Enter to keep the current value, or type a new one.")
+
+            new_client = input(f"  Client Name [{client_info['client_name']}]: ").strip()
+            if new_client:
+                client_info['client_name'] = new_client
+
+            new_project = input(f"  Project Name [{client_info['project_name']}]: ").strip()
+            if new_project:
+                client_info['project_name'] = new_project
+
+            print(f"  Asset Type options:")
+            print("    1. Web Application  2. Mobile Application  3. API")
+            print("    4. Desktop Application  5. Cloud Service  6. Other")
+            asset_choice = input(
+                f"  Asset Type [{client_info['asset_type']}] (Enter to keep, or 1-6): "
+            ).strip()
+            if asset_choice:
+                asset_map = {
+                    "1": "Web Application", "2": "Mobile Application",
+                    "3": "API", "4": "Desktop Application",
+                    "5": "Cloud Service", "6": "Other",
+                }
+                new_asset = asset_map.get(asset_choice)
+                if new_asset:
+                    if asset_choice == "6":
+                        custom = input("  Enter custom asset type: ").strip()
+                        if custom:
+                            new_asset = custom
+                    client_info['asset_type'] = new_asset
+
         else:
-            print("No similar projects found. Exiting.")
-            return
+            # Fresh entry
+            client_info = collect_client_info()
+
+    else:
+        # First run — always collect fresh
+        client_info = collect_client_info()
+
+    # Apply to globals used by PDF rendering
+    CLIENT_NAME  = client_info['client_name']
+    PROJECT_NAME = client_info['project_name']
+    ASSET_TYPE   = client_info['asset_type']
+
+    # ---- Project selection ----------------------------------------
+    print("\n--- PROJECT SELECTION ---")
+    projects = get_available_projects(session, sonar_url)
+
+    actual_project_key = None
+
+    if projects:
+        print(f"\nAvailable projects ({len(projects)} found):")
+        display_projects = projects[:50]  # cap display at 50
+        for i, p in enumerate(display_projects, 1):
+            print(f"  {i:>2}. {p.get('name', 'Unnamed'):<40}  (Key: {p.get('key')})")
+        if len(projects) > 50:
+            print(f"       ... and {len(projects) - 50} more (enter key manually below)")
+
+        print("\nEnter a project number from the list, or type the Project Key manually.")
+        choice = input("Selection: ").strip()
+
+        if choice.isdigit():
+            idx = int(choice) - 1
+            if 0 <= idx < len(display_projects):
+                actual_project_key = display_projects[idx].get('key')
+                print(f"Selected: {display_projects[idx].get('name')}  ({actual_project_key})")
+            else:
+                print("Invalid number, falling back to manual key entry.")
+
+        if not actual_project_key:
+            # Treat input as a raw key
+            project_key_input = choice.strip('"\'')
+            if project_key_input:
+                actual_project_key = validate_project_key(session, sonar_url, project_key_input)
+    else:
+        print("Could not retrieve project list. Please enter the Project Key manually.")
+        project_key_input = input("Project Key/ID: ").strip().strip('"\'')
+        if project_key_input:
+            actual_project_key = validate_project_key(session, sonar_url, project_key_input)
+
+    if not actual_project_key:
+        print("No valid project selected. Aborting this report.")
+        return None, client_info
 
     PROJECT_KEY = actual_project_key
 
+    # ---- Fetch hotspots -------------------------------------------
     print(f"\nFetching hotspots for: {PROJECT_KEY}...")
     hotspot_api = (
         f"{sonar_url}/api/hotspots/search"
@@ -1218,7 +1271,7 @@ def main():
         resp.raise_for_status()
     except Exception as e:
         print(f"Error fetching hotspots: {e}")
-        return
+        return None, client_info
 
     hotspots = resp.json().get("hotspots", [])
     print(f"Found {len(hotspots)} hotspots\n")
@@ -1239,7 +1292,7 @@ def main():
         pdf.no_vulnerabilities_page()
         pdf.output(pdf_filename)
         print(f"\nReport saved: {pdf_filename}  (no vulnerabilities found)")
-        return
+        return pdf_filename, client_info
 
     all_hotspot_data = []
     successful = failed = 0
@@ -1351,8 +1404,57 @@ def main():
             for raw, cnt in resolution_counts.items():
                 print(f"  {resolution_display(raw)}: {cnt}")
         print(f"{'='*70}\n")
+        return pdf_filename, client_info
     except Exception as e:
         print(f"Error saving PDF: {e}")
+        return None, client_info
+
+
+# =========================
+# Main
+# =========================
+
+def main():
+    global COMPANY_NAME
+
+    print("\n" + "="*60)
+    print("SONARQUBE SECURITY HOTSPOTS REPORT GENERATOR v4.1 by AS")
+    print("="*60)
+
+    print("\n--- YOUR COMPANY ---")
+    COMPANY_NAME = (input("Your Company Name: ").strip() or "COMMTEL").upper()
+
+    sonar_url = (input("\nSonarQube URL [http://localhost:9000]: ").strip()
+                 or "http://localhost:9000").rstrip('/')
+
+    # ---- Login with retry -----------------------------------------
+    session = login_with_retry(sonar_url, max_attempts=3)
+    if not session:
+        print("\nExiting: unable to authenticate after multiple attempts.")
+        return
+
+    # ---- Report generation loop -----------------------------------
+    last_client_info = None
+
+    while True:
+        result, last_client_info = generate_report(
+            session, sonar_url,
+            reuse_client_info=last_client_info
+        )
+
+        if result:
+            print(f"Report saved: {result}")
+        else:
+            print("Report generation was unsuccessful for this project.")
+
+        again = input("\nGenerate another report? (y/n) [n]: ").strip().lower()
+        if again != 'y':
+            print("\nThank you for using the SonarQube Report Generator. Goodbye!")
+            break
+
+        print("\n" + "-"*60)
+        print("Starting new report (existing session reused — no re-login required)")
+        print("-"*60)
 
 
 if __name__ == "__main__":
